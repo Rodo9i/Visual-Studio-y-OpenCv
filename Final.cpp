@@ -1,0 +1,192 @@
+#include<iostream>
+#include <cv.h>
+#include <cxcore.h> 
+#include <highgui.h>
+#include< windows.h >
+
+using namespace std;
+using namespace cv; 
+/*
+FUNCIONES:
+1-Capturar Imagen	[/]
+2-Binarizar Imagen	[/]
+3-Detectar Falla	[/]
+4-Invertir Colores y mostrar con un circulo el error si es el caso	[/]
+5-Sonido: La marcha de zacatecas	[/]
+6-Escala de imagen al 85%	[/]
+*/
+
+//Funciones
+void camara();//1
+void BinarImagen();//2
+void DectectarFalla();//3
+void pintar();//4
+void marchaZacatecas();//5
+void escalaImagen();//6
+
+int main(){
+
+	/*1-Capturar Imagen.*/	camara();
+	/*2-Binarizar Imagen.*/	BinarImagen();
+	/*3-Detectar Falla.*/ DectectarFalla();
+	/*5-Escala Imagen.*/escalaImagen();
+
+	system("pause");
+	return 0;
+}  
+
+void camara(){
+	
+	IplImage* img;
+
+	CvCapture *capture = cvCaptureFromCAM(0);
+		if(!capture){
+			printf("\n\nNO SE ENCONTRO CAMARA\n");
+			Sleep(3000);
+			exit(1);
+		}
+
+	cvSetCaptureProperty(capture,CV_CAP_PROP_FRAME_WIDTH,600);
+	cvSetCaptureProperty(capture,CV_CAP_PROP_FRAME_HEIGHT,600);
+
+	for(int i=0; i < 10; i++){
+		img = cvQueryFrame(capture);
+
+		if(!img){
+		
+			cout<<"No se encontro la imagen"<<endl;
+			Sleep(3000);
+			break;
+		}
+
+		cvNamedWindow("Imagen capturada",CV_WINDOW_AUTOSIZE);
+		cvShowImage("Imagen capturada",img);
+		cvWaitKey(0);
+	}
+
+	cvDestroyWindow("Imagen capturada");
+
+	cvSaveImage("Imagen Capturada.png",img);
+	}
+
+void BinarImagen(){
+
+	IplImage* src; // imagen base
+	IplImage* grayThresh; // Imagen binaria conseguida
+	
+	int threshold = 150; // definimos el valor minimo del umbral
+	int maxValue = 200; // definimos el valor máximo del umbral
+	int thresholdType = CV_THRESH_BINARY; //Tipo de binarización
+
+	src = cvLoadImage("Imagen capturada.png", 0); // Cargamos la imagen original en escala de grises (0)
+	grayThresh = cvCloneImage( src ); //Clonamos la imagen original
+	
+	cvNamedWindow( "Original", 1 ); //Imagen Original.
+	cvShowImage( "Original", src );//Mostramos la imagen original en escala de grises.
+
+	cvThreshold(src, grayThresh, threshold, maxValue, thresholdType);// binarizamos la imagen
+
+	cvNamedWindow( "Imagen Binarizada", 1 ); //Creamos la ventana para la imagen 
+	cvSaveImage("Correcta Binarizada.png",grayThresh); //Guardamos la imagen
+	cvShowImage( "Imagen Binarizada", grayThresh );//Mostramos la imagen binarizada
+	
+	cvWaitKey(0); // pulsamos tecla para terminar
+
+	cvDestroyWindow( "Original" );
+
+	cvDestroyWindow( "Imagen Binarizada" );
+
+	cvReleaseImage( &src ); 
+
+	cvReleaseImage( &grayThresh );
+
+}
+
+void escalaImagen(){
+
+	int h,w;
+	IplImage *img=cvLoadImage("Imagen capturada.png");	//Cargamos la imagen.
+
+	//Escalado al 85%
+	h=(img->height *85)/100;
+	w=(img->width *85)/100;
+		
+	IplImage *ampl=cvCreateImage(cvSize(h,w),IPL_DEPTH_8U,3);//Creamos una imagen con las dimensiones de h y w
+	cvNamedWindow("Imagen Original",CV_WINDOW_AUTOSIZE);//Creamos una ventana nueva
+	cvNamedWindow("Imagen Escalada",CV_WINDOW_AUTOSIZE);//Creamos una venta para la imagen amplificada
+	cvResize(img,ampl,CV_INTER_CUBIC);//use cvResize para cambiar el tamaño de la fuente a una imagen de destino
+	cvShowImage("Imagen Original",img);
+	cvShowImage("Imagen Escalada",ampl);
+	cvWaitKey(0);
+	cvReleaseImage(&img);
+	cvReleaseImage(&ampl);
+	cvDestroyWindow("Imagen Original");
+	cvDestroyWindow("Imagen Escalada");
+
+}
+
+void marchaZacatecas(){
+	PlaySound(TEXT("MARCHA DE ZACATECAS.wav"),NULL,SND_ASYNC);
+}
+
+
+void DectectarFalla(){ 
+		
+		Mat uh = imread("Correcta Binarizada.png"); // objetos Mat para poder dibujar el circulo sobre la imagen que tomamos	
+		IplImage* ar= cvLoadImage("Correcta Binarizada.png");
+		int row, col,ceros=0,unos=0;
+
+		uchar b;
+
+		for( row = 150; row <= ar->height-100; row++ )
+			{
+				for ( col =270; col <=1450; col++ )
+					{
+						b=CV_IMAGE_ELEM( ar, uchar, row, col );//Capturamos el pixel
+
+							if(b==0)ceros++; else unos++;//Contador para ceros y unos de la imagen
+
+								b =CV_IMAGE_ELEM( ar, uchar, row, col)=255;//Pintamos el espacio de blanco
+						}
+				}
+		cout<<"Unos: "<<unos<<endl;
+		cout<<"Ceros: "<<ceros<<endl;
+		cvShowImage("Hola", ar);//Mostramos la imagen pintada
+		cvWaitKey(0);
+		cvDestroyWindow("Hola");
+		
+		
+
+		//Para la imagen sin corte
+		if(ceros > 133296 &&  ceros < 150084 ){ 
+				cout<<"Sin corte"<<endl;
+				marchaZacatecas();//Sonido
+			}
+		//Para la imagen correcta
+			if(ceros > 88967 &&  ceros < 106293 ){
+			cout<<"Correcta"<<endl;
+			}
+		//Para la imagen de falla azul
+		if(ceros > 103000 && ceros < 132757){
+			cout<<"Falla color azul"<<endl;
+
+			marchaZacatecas();//Sonido
+		    circle(uh,  Point(250 , ar->height-300 ),65, Scalar(0,0,255), 2);
+		    imshow("Drawing", uh);
+	        waitKey(0);
+		    cvDestroyWindow("Drawing");
+		} 
+		//Para la imagen de falla blanca
+		if(ceros > 50000   &&  ceros < 88806){
+				
+				printf("Falla color blanca\n");
+				
+				marchaZacatecas(); 
+				circle(uh, Point(300 , ar->height-150 ), 65, Scalar(0,0,255), 2);
+				imshow("Drawing", uh);  
+				waitKey(0);
+				cvDestroyWindow("Drawing");
+				}
+
+			
+		}
